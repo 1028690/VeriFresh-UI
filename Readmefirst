@@ -1,3 +1,6 @@
-Enter the following into the terminal:
-#!/bin/bash
+Enter this into the terminal:
 npm install --legacy-peer-deps && npm run dev
+
+
+In the bottom right, you will see a prompt to go to port 3000
+Here, click "Open in Browser"
