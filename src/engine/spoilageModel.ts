@@ -586,6 +586,9 @@ export function simulateItemOverDays(
   let effectiveAgeHours = baseAssessment.effectiveAgeHours;
   let lastRate = baseAssessment.effectiveDecayRate;
   let lastFactors = baseAssessment.factorMultipliers;
+  const targetThresholdHours = nominalHours * 0.91;
+  let crossedAtHour: number | null =
+    baseAssessment.effectiveAgeHours >= targetThresholdHours ? 0 : null;
 
   for (let h = 1; h <= totalSkipHours; h++) {
     const env = hourlyEnv[h];
@@ -601,13 +604,26 @@ export function simulateItemOverDays(
       0.1,
       lastFactors.thermal * lastFactors.moisture * lastFactors.voc * lastFactors.pressure * fittedGain,
     );
+    const prevAge = effectiveAgeHours;
     effectiveAgeHours += lastRate;
+
+    if (crossedAtHour === null && effectiveAgeHours >= targetThresholdHours) {
+      const frac = (targetThresholdHours - prevAge) / Math.max(0.001, lastRate);
+      crossedAtHour = h - 1 + Math.max(0, Math.min(1, frac));
+    }
   }
 
   const ageRatio = effectiveAgeHours / nominalHours;
   const expirationLikelihoodPct = ageRatioToExpirationPct(ageRatio);
-  const targetThresholdHours = nominalHours * 0.91;
-  const remainingSafeHours = (targetThresholdHours - effectiveAgeHours) / lastRate;
+
+  let remainingSafeHours: number;
+  if (baseAssessment.effectiveAgeHours >= targetThresholdHours) {
+    remainingSafeHours = baseAssessment.remainingSafeHours - totalSkipHours;
+  } else if (crossedAtHour !== null) {
+    remainingSafeHours = -(totalSkipHours - crossedAtHour);
+  } else {
+    remainingSafeHours = (targetThresholdHours - effectiveAgeHours) / Math.max(0.1, lastRate);
+  }
 
   const deviations: Array<{
     driver: SpoilageAssessment['dominantDriver'];

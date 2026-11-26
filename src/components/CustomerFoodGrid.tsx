@@ -23,6 +23,8 @@ interface FoodCardRow {
 interface CustomerFoodGridProps {
   rows: FoodCardRow[];
   baseline: PantryBaseline;
+  simulatedDays: number;
+  nowMs: number;
   onUpdateItem: (item: FoodItem) => void;
   onRemoveItem: (id: string) => void;
   onOpenAddModal: () => void;
@@ -122,6 +124,8 @@ const PACKAGINGS: PackagingType[] = ['Unsealed', 'Resealable', 'Airtight'];
 export function CustomerFoodGrid({
   rows,
   baseline,
+  simulatedDays,
+  nowMs,
   onUpdateItem,
   onRemoveItem,
   onOpenAddModal,
@@ -208,15 +212,15 @@ export function CustomerFoodGrid({
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {sortedRows.map(({ item, assessment }) => {
             const status = STATUS_DISPLAY[assessment.status];
-            const elapsedHours = getEffectiveStoredHours(item);
+            const elapsedHours = getEffectiveStoredHours(item, nowMs) + simulatedDays * 24;
             const isExpanded = expandedId === item.id;
 
             const timelinePct = Math.min(
               100,
               Math.max(
                 4,
-                (elapsedHours / Math.max(4, item.nominalShelfLifeDays * 24)) *
-                  assessment.effectiveDecayRate *
+                (assessment.effectiveAgeHours /
+                  Math.max(4, item.nominalShelfLifeDays * 24 * 0.91)) *
                   100,
               ),
             );

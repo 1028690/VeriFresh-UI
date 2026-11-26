@@ -26,6 +26,8 @@ interface InventoryRow {
 
 interface InventoryManagerViewProps {
   rows: InventoryRow[];
+  simulatedDays: number;
+  nowMs: number;
   onAddItem: (item: FoodItem) => void;
   onUpdateItem: (item: FoodItem) => void;
   onRemoveItem: (id: string) => void;
@@ -62,6 +64,8 @@ const STATUS_STYLE: Record<SpoilageStatus, { glyph: string; textClass: string }>
 
 export function InventoryManagerView({
   rows,
+  simulatedDays,
+  nowMs,
   onAddItem,
   onUpdateItem,
   onRemoveItem,
@@ -485,7 +489,7 @@ export function InventoryManagerView({
                 <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-mono uppercase tracking-wider text-slate-500">
                   <th className="py-2.5 px-4 font-medium">Product &amp; Specs</th>
                   <th className="py-2.5 px-3 font-medium">Stored Timestamp</th>
-                  <th className="py-2.5 px-3 font-medium">Elapsed / Life</th>
+                  <th className="py-2.5 px-3 font-medium">Elapsed / Time Left</th>
                   <th className="py-2.5 px-3 font-medium text-right">Expiry Risk</th>
                   <th className="py-2.5 px-3 font-medium">Status</th>
                   <th className="py-2.5 px-4 font-medium text-right">Actions</th>
@@ -494,7 +498,7 @@ export function InventoryManagerView({
               <tbody className="divide-y divide-slate-100">
                 {filteredRows.map(({ item, assessment }) => {
                   const statusInfo = STATUS_STYLE[assessment.status];
-                  const elapsedHours = getEffectiveStoredHours(item);
+                  const elapsedHours = getEffectiveStoredHours(item, nowMs) + simulatedDays * 24;
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 align-top">
                       <td className="py-3 px-4">
@@ -542,9 +546,17 @@ export function InventoryManagerView({
                         </div>
                       </td>
                       <td className="py-3 px-3 font-mono tabular-nums text-slate-700 whitespace-nowrap">
-                        <div>{formatDuration(elapsedHours)}</div>
-                        <div className="text-[11px] text-slate-400">
-                          of {item.nominalShelfLifeDays}d
+                        <div>
+                          {formatDuration(elapsedHours)} ·{' '}
+                          <span className="text-slate-900 font-semibold">
+                            {assessment.effectiveDecayRate.toFixed(2)}x pace
+                          </span>
+                        </div>
+                        <div className={`text-[11px] mt-0.5 ${assessment.remainingSafeHours >= 0 ? 'text-slate-500' : 'text-rose-700 font-medium'}`}>
+                          {assessment.remainingSafeHours >= 0
+                            ? `~${formatDuration(assessment.remainingSafeHours)} left`
+                            : `Past best window by ${formatDuration(assessment.remainingSafeHours)}`}{' '}
+                          (of {item.nominalShelfLifeDays}d base)
                         </div>
                       </td>
                       <td className="py-3 px-3 font-mono tabular-nums font-semibold text-slate-900 text-right whitespace-nowrap">

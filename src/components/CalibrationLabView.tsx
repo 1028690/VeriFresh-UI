@@ -3,6 +3,7 @@ import { Check, RotateCcw, FastForward, Rewind } from 'lucide-react';
 import { WEEKLY_SCHEDULE_PRESETS } from '../data/presets';
 import {
   assessFoodItem,
+  formatDuration,
   runWeeklyCalibration,
   simulateItemOverDays,
 } from '../engine/spoilageModel';
@@ -463,12 +464,21 @@ export function CalibrationLabView({
                   <div className="space-y-1.5">
                     {foodImpactPreview.map(({ item, before, after }) => {
                       const diff = after.expirationLikelihoodPct - before.expirationLikelihoodPct;
+                      const afterTimeLabel =
+                        after.remainingSafeHours >= 0
+                          ? `~${formatDuration(after.remainingSafeHours)} left`
+                          : `-${formatDuration(after.remainingSafeHours)}`;
                       return (
                         <div
                           key={item.id}
                           className="flex items-center justify-between gap-2 text-xs bg-slate-50 border border-slate-200/80 rounded px-2.5 py-1.5"
                         >
-                          <span className="truncate text-slate-700">{item.name}</span>
+                          <div className="min-w-0">
+                            <div className="truncate text-slate-700">{item.name}</div>
+                            <div className="text-[11px] font-mono tabular-nums text-slate-500">
+                              {after.effectiveDecayRate.toFixed(2)}x pace · {afterTimeLabel}
+                            </div>
+                          </div>
                           <span className="font-mono tabular-nums whitespace-nowrap text-slate-900">
                             {before.expirationLikelihoodPct.toFixed(0)}% →{' '}
                             <strong>{after.expirationLikelihoodPct.toFixed(0)}%</strong>{' '}

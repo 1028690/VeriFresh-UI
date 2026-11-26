@@ -170,6 +170,25 @@ export default function App() {
     [items, weeklySchedule, reading, baseline, simulatedDays, nowMs],
   );
 
+  const syncSimulatedDayIfActive = (next: BME688Reading) => {
+    if (simulatedDays <= 0) return;
+    setWeeklySchedule((prev) => {
+      if (prev.length === 0) return prev;
+      const targetIdx = (simulatedDays - 1) % prev.length;
+      return prev.map((day, idx) =>
+        idx === targetIdx
+          ? {
+              ...day,
+              temperatureC: next.temperatureC,
+              humidityPct: next.humidityPct,
+              vocPpm: next.vocPpm,
+              pressureHpa: next.pressureHpa,
+            }
+          : day,
+      );
+    });
+  };
+
   const pushReading = (next: BME688Reading) => {
     setReading(next);
     setHistory((hist) => [...hist.slice(-59), next]);
@@ -180,62 +199,67 @@ export default function App() {
     value: number,
   ) => {
     if (!Number.isFinite(value)) return;
+    const baseSource = simulatedDays > 0 ? activeDisplayReading : reading;
     const next = buildReading(
-      channel === 'temperatureC' ? value : reading.temperatureC,
-      channel === 'humidityPct' ? value : reading.humidityPct,
-      channel === 'vocPpm' ? value : reading.vocPpm,
-      channel === 'pressureHpa' ? value : reading.pressureHpa,
+      channel === 'temperatureC' ? value : baseSource.temperatureC,
+      channel === 'humidityPct' ? value : baseSource.humidityPct,
+      channel === 'vocPpm' ? value : baseSource.vocPpm,
+      channel === 'pressureHpa' ? value : baseSource.pressureHpa,
     );
     pushReading(next);
+    syncSimulatedDayIfActive(next);
   };
 
   const handleApplyPreset = (presetId: string) => {
     if (presetId === 'pantry-normal') {
-      pushReading(
-        buildReading(
-          baseline.temperatureC,
-          baseline.humidityPct,
-          baseline.vocPpm,
-          baseline.pressureHpa,
-        ),
+      const next = buildReading(
+        baseline.temperatureC,
+        baseline.humidityPct,
+        baseline.vocPpm,
+        baseline.pressureHpa,
       );
+      pushReading(next);
+      syncSimulatedDayIfActive(next);
       return;
     }
     const preset = SENSOR_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
-    pushReading(
-      buildReading(
-        preset.temperatureC,
-        preset.humidityPct,
-        preset.vocPpm,
-        preset.pressureHpa,
-      ),
+    const next = buildReading(
+      preset.temperatureC,
+      preset.humidityPct,
+      preset.vocPpm,
+      preset.pressureHpa,
     );
+    pushReading(next);
+    syncSimulatedDayIfActive(next);
   };
 
   const handleSetCurrentAsDefault = () => {
+    const source = activeDisplayReading;
     const nowLabel = new Date().toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
     });
     setBaseline((prev) => ({
       ...prev,
-      temperatureC: reading.temperatureC,
-      humidityPct: reading.humidityPct,
-      vocPpm: reading.vocPpm,
-      pressureHpa: reading.pressureHpa,
+      temperatureC: source.temperatureC,
+      humidityPct: source.humidityPct,
+      vocPpm: source.vocPpm,
+      pressureHpa: source.pressureHpa,
       calibratedAt: nowLabel,
       label: 'Custom Kitchen Pantry Default',
     }));
     setToastNotice(
-      `Saved ${reading.temperatureC.toFixed(1)} °C, ${reading.humidityPct.toFixed(0)}% humidity as your normal kitchen pantry default.`,
+      `Saved ${source.temperatureC.toFixed(1)} °C, ${source.humidityPct.toFixed(0)}% humidity as your normal kitchen pantry default.`,
     );
   };
 
   const handleIngestReadings = (newReadings: BME688Reading[]) => {
     if (newReadings.length === 0) return;
+    const latest = newReadings[newReadings.length - 1];
     setHistory((prev) => [...prev, ...newReadings].slice(-60));
-    setReading(newReadings[newReadings.length - 1]);
+    setReading(latest);
+    syncSimulatedDayIfActive(latest);
   };
 
   const handleAddItem = (newItem: FoodItem) => {
@@ -357,6 +381,8 @@ export default function App() {
             <CustomerFoodGrid
               rows={assessedRows}
               baseline={baseline}
+              simulatedDays={simulatedDays}
+              nowMs={nowMs}
               onUpdateItem={handleUpdateItem}
               onRemoveItem={handleRemoveItem}
               onOpenAddModal={() => setIsAddModalOpen(true)}
@@ -368,6 +394,8 @@ export default function App() {
         {activeTab === 'inventory' && (
           <InventoryManagerView
             rows={assessedRows}
+            simulatedDays={simulatedDays}
+            nowMs={nowMs}
             onAddItem={handleAddItem}
             onUpdateItem={handleUpdateItem}
             onRemoveItem={handleRemoveItem}
@@ -379,7 +407,7 @@ export default function App() {
 
         {activeTab === 'stream' && (
           <SensorStreamView
-            reading={reading}
+            reading={activeDisplayReading}
             baseline={baseline}
             history={history}
             isLiveStream={isLiveStream}
