@@ -11,6 +11,7 @@ const NAV_ITEMS: Array<{ id: WorkspaceTab; label: string }> = [
   { id: 'inventory', label: 'Inventory' },
   { id: 'stream', label: 'Sensors' },
   { id: 'calibration', label: 'Beta Calibration' },
+  { id: 'plans', label: 'Explore Plans' },
 ];
 
 export function TopBar({ activeTab, onSelectTab, onOpenAddModal }: TopBarProps) {

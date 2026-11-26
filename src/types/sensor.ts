@@ -10,7 +10,15 @@ export type PackagingType = 'Unsealed' | 'Resealable' | 'Airtight';
 
 export type SpoilageStatus = 'Fresh' | 'Watch' | 'High Risk' | 'Likely Expired';
 
-export type WorkspaceTab = 'monitor' | 'inventory' | 'stream' | 'calibration';
+export type WorkspaceTab = 'monitor' | 'inventory' | 'stream' | 'calibration' | 'plans';
+
+export type PlanId =
+  | 'free'
+  | 'consumer'
+  | 'small-business'
+  | 'enterprise'
+  | 'commercial'
+  | 'warehouse';
 
 export interface BME688Reading {
   temperatureC: number;

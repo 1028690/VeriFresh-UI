@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Upload, Play, Square, BookmarkCheck } from 'lucide-react';
 import { SENSOR_PRESETS } from '../data/presets';
 import { parseBME688Payload } from '../engine/spoilageModel';
-import { BME688Reading, PantryBaseline } from '../types/sensor';
+import { BME688Reading, PantryBaseline, PlanId } from '../types/sensor';
+import { PLAN_TIERS } from './ExplorePlansView';
 
 interface SensorStreamViewProps {
   reading: BME688Reading;
   baseline: PantryBaseline;
   history: BME688Reading[];
   isLiveStream: boolean;
+  currentPlanId: PlanId;
   onToggleLiveStream: () => void;
   onUpdateChannel: (
     channel: 'temperatureC' | 'humidityPct' | 'vocPpm' | 'pressureHpa',
@@ -17,6 +19,7 @@ interface SensorStreamViewProps {
   onApplyPreset: (presetId: string) => void;
   onSetCurrentAsDefault: () => void;
   onIngestReadings: (readings: BME688Reading[]) => void;
+  onOpenPlansTab: () => void;
 }
 
 const SAMPLE_JSON_PAYLOAD = `{
@@ -38,12 +41,15 @@ export function SensorStreamView({
   baseline,
   history,
   isLiveStream,
+  currentPlanId,
   onToggleLiveStream,
   onUpdateChannel,
   onApplyPreset,
   onSetCurrentAsDefault,
   onIngestReadings,
+  onOpenPlansTab,
 }: SensorStreamViewProps) {
+  const activePlan = PLAN_TIERS.find((p) => p.id === currentPlanId) ?? PLAN_TIERS[0];
   const [rawText, setRawText] = useState(SAMPLE_JSON_PAYLOAD);
   const [parseMessage, setParseMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(
     null,
@@ -97,6 +103,19 @@ export function SensorStreamView({
             <p className="text-sm text-slate-600 mt-1">
               Adjust room sensor values manually, pick an environment preset, or paste JSON/CSV readings from your BME688 hardware.
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+              <span>
+                Active Tier: <strong className="text-slate-900">{activePlan.name}</strong> ({activePlan.sensorRangeLabel})
+              </span>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={onOpenPlansTab}
+                className="text-blue-700 hover:underline font-medium whitespace-nowrap"
+              >
+                Explore Plans for more sensors
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button

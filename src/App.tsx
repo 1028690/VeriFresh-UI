@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AddFoodModal } from './components/AddFoodModal';
 import { CalibrationLabView } from './components/CalibrationLabView';
 import { CustomerFoodGrid } from './components/CustomerFoodGrid';
+import { ExplorePlansView, PLAN_TIERS } from './components/ExplorePlansView';
 import { InventoryManagerView } from './components/InventoryManagerView';
 import { PantryVisualHero } from './components/PantryVisualHero';
 import { SensorStreamView } from './components/SensorStreamView';
@@ -22,6 +23,7 @@ import {
   BME688Reading,
   FoodItem,
   PantryBaseline,
+  PlanId,
   WeeklyDaySchedule,
   WorkspaceTab,
 } from './types/sensor';
@@ -31,6 +33,7 @@ const STORAGE_KEYS = {
   baseline: 'pantrysense_bme688_baseline_v1',
   schedule: 'pantrysense_bme688_schedule_v1',
   simulatedDays: 'pantrysense_bme688_sim_days_v1',
+  plan: 'pantrysense_bme688_plan_v1',
 };
 
 function loadStored<T>(key: string, fallback: T): T {
@@ -64,6 +67,9 @@ export default function App() {
   );
   const [simulatedDays, setSimulatedDays] = useState<number>(() =>
     loadStored(STORAGE_KEYS.simulatedDays, 0),
+  );
+  const [currentPlanId, setCurrentPlanId] = useState<PlanId>(() =>
+    loadStored<PlanId>(STORAGE_KEYS.plan, 'free'),
   );
 
   const [reading, setReading] = useState<BME688Reading>(() =>
@@ -117,6 +123,14 @@ export default function App() {
       // Ignore storage quota errors
     }
   }, [simulatedDays]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(currentPlanId));
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [currentPlanId]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 30000);
@@ -411,11 +425,13 @@ export default function App() {
             baseline={baseline}
             history={history}
             isLiveStream={isLiveStream}
+            currentPlanId={currentPlanId}
             onToggleLiveStream={() => setIsLiveStream((v) => !v)}
             onUpdateChannel={handleUpdateChannel}
             onApplyPreset={handleApplyPreset}
             onSetCurrentAsDefault={handleSetCurrentAsDefault}
             onIngestReadings={handleIngestReadings}
+            onOpenPlansTab={() => setActiveTab('plans')}
           />
         )}
 
@@ -445,6 +461,22 @@ export default function App() {
               );
             }}
             onResetStandardBaseline={() => setBaseline(STANDARD_PANTRY_BASELINE)}
+          />
+        )}
+
+        {activeTab === 'plans' && (
+          <ExplorePlansView
+            currentPlanId={currentPlanId}
+            onSelectPlan={(planId) => {
+              setCurrentPlanId(planId);
+              const selected = PLAN_TIERS.find((p) => p.id === planId);
+              if (selected) {
+                setToastNotice(
+                  `Switched active workspace plan to ${selected.name} (${selected.sensorRangeLabel}).`,
+                );
+              }
+            }}
+            onOpenSensorsTab={() => setActiveTab('stream')}
           />
         )}
       </main>
